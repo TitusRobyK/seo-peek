@@ -30,6 +30,22 @@ function getMetaElement(name) {
     return notAvailable;
 }
 
+function getMetaPropertyElement(propertyName) {
+    var metaTags = document.getElementsByTagName('meta');
+    for (var i = 0, mLen = metaTags.length; i < mLen; i++) {
+        var propertyAttr = metaTags[i].getAttribute('property');
+        if (propertyAttr && propertyAttr.toLowerCase() === propertyName) {
+            var content = metaTags[i].getAttribute('content');
+            if (content) {
+                return content;
+            } else {
+                return contentMissing;
+            }
+        }
+    }
+    return notAvailable;
+}
+
 function getMetaElementOccurrences(name) {
     var metaTags = document.getElementsByTagName('meta'),
         matched = 0;
@@ -160,6 +176,10 @@ var metaDescription = getMetaElement('description'),
 var metaKeywords = getMetaElement('keywords'),
     metaKeywordsOccurrences = getMetaElementOccurrences('keywords');
 
+var ogTitle = getMetaPropertyElement('og:title');
+var ogDescription = getMetaPropertyElement('og:description');
+var ogImage = getMetaPropertyElement('og:image');
+
 var h1Heading = [],
     getH1Heading = (typeof getElement('h1') !== "undefined") ? getElement('h1').replace(/\s+/g, ' ') : notAvailable;
 h1Heading.push(getH1Heading);
@@ -190,6 +210,9 @@ chrome.runtime.sendMessage({
     metaDescriptionOccurrences: metaDescriptionOccurrences,
     metaKeywords: metaKeywords,
     metaKeywordsOccurrences: metaKeywordsOccurrences,
+    ogTitle: ogTitle,
+    ogDescription: ogDescription,
+    ogImage: ogImage,
     h1Heading: h1Heading,
     h1HeadingOccurrences: h1HeadingOccurrences,
     metaRobots: metaRobots,

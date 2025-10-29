@@ -1,6 +1,24 @@
-chrome.tabs.executeScript(null, {
-    file: "js/script.js"
-});
+function injectContentScript() {
+    chrome.tabs.query({
+        active: true,
+        currentWindow: true
+    }, function(tabs) {
+        if (!tabs.length || tabs[0].id === undefined) {
+            return;
+        }
+
+        chrome.scripting.executeScript({
+            target: {tabId: tabs[0].id},
+            files: ["js/script.js"]
+        }, function() {
+            if (chrome.runtime.lastError) {
+                console.warn("SEO Peek: unable to inject content script", chrome.runtime.lastError);
+            }
+        });
+    });
+}
+
+injectContentScript();
 
 var pageTitle = [],
     pageTitleCharacters = [],
@@ -128,6 +146,44 @@ chrome.runtime.onMessage.addListener(
                 keywordsElem.innerText = metaKeywords;
             }
             metaKeywordsElem.appendChild(keywordsElem);
+
+            // OG Title
+            var ogTitleElem = document.getElementById("og-title"),
+                ogTitleElemContent = document.createElement("p"),
+                ogTitleValue = request.ogTitle;
+
+            if (ogTitleValue === notAvailable || ogTitleValue === contentMissing) {
+                ogTitleElemContent.innerHTML = '<span class="missing-value">' + ogTitleValue + '</span>';
+            } else {
+                ogTitleElemContent.innerText = ogTitleValue;
+            }
+            ogTitleElem.appendChild(ogTitleElemContent);
+
+            // OG Description
+            var ogDescriptionElem = document.getElementById("og-description"),
+                ogDescriptionElemContent = document.createElement("p"),
+                ogDescriptionValue = request.ogDescription;
+
+            if (ogDescriptionValue === notAvailable || ogDescriptionValue === contentMissing) {
+                ogDescriptionElemContent.innerHTML = '<span class="missing-value">' + ogDescriptionValue + '</span>';
+            } else {
+                ogDescriptionElemContent.innerText = ogDescriptionValue;
+            }
+            ogDescriptionElem.appendChild(ogDescriptionElemContent);
+
+            // OG Image
+            var ogImageElem = document.getElementById("og-image"),
+                ogImageElemContent = document.createElement("p"),
+                ogImageValue = request.ogImage;
+
+            if (ogImageValue === notAvailable || ogImageValue === contentMissing) {
+                ogImageElemContent.innerHTML = '<span class="missing-value">' + ogImageValue + '</span>';
+            } else if (hasProtocol(ogImageValue)) {
+                ogImageElemContent.innerHTML = '<a href="' + ogImageValue + '" target="_blank">' + ogImageValue + '</a>';
+            } else {
+                ogImageElemContent.innerText = ogImageValue;
+            }
+            ogImageElem.appendChild(ogImageElemContent);
 
             // Meta Keywords Occurrences
             var metaKeywordsOccurrences = request.metaKeywordsOccurrences;
@@ -401,9 +457,9 @@ chrome.runtime.onMessage.addListener(
 
                         // Show footer links
                         var seoPeekLink = document.getElementById("seo-peek");
-                        seoPeekLink.innerHTML = '<a href="https://www.sanderheilbron.nl/seo-peek/" target="_blank">SEO Peek</a>';
+                        seoPeekLink.innerHTML = '<a href="#" target="_blank">SEO Peek</a>';
                         var shLink = document.getElementById("sh");
-                        shLink.innerHTML = '<a href="https://www.sanderheilbron.nl/" target="_blank">Sander Heilbron</a>';
+                        shLink.innerHTML = '<a href="#" target="_blank">Sander Heilbron</a>';
 
                         // Show content
                         infoElem.style.display = "block";
@@ -414,28 +470,34 @@ chrome.runtime.onMessage.addListener(
                         // Hide spinner
                         spinnerElem.style.display = "none";
 
-                        xhr2.onreadystatechange = function() {
-                            if (xhr2.readyState === 4) {
-                                statusCode = xhr2.status;
-                                statusText = xhr2.statusText;
-                                responseURL = xhr2.responseURL;
+                        if (canonicalLinkTag && hasProtocol(canonicalLinkTag)) {
+                            xhr2.onreadystatechange = function() {
+                                if (xhr2.readyState === 4) {
+                                    statusCode = xhr2.status;
+                                    statusText = xhr2.statusText;
+                                    responseURL = xhr2.responseURL;
 
-                                var httpCanonicalStatus = statusCode + " " + statusText;
+                                    var httpCanonicalStatus = statusCode + " " + statusText;
 
-                                if (httpCanonicalStatus) {
-                                    var spanCanonicalLinkTagInfoStatus = document.getElementById("canonical-link-tag-info-status");
-                                    spanCanonicalLinkTagInfoStatus.innerHTML = (responseURL !== canonicalLinkTag) ? "redirects &rarr; " + httpCanonicalStatus : httpCanonicalStatus;
+                                    if (httpCanonicalStatus) {
+                                        var spanCanonicalLinkTagInfoStatus = document.getElementById("canonical-link-tag-info-status");
+                                        if (spanCanonicalLinkTagInfoStatus) {
+                                            spanCanonicalLinkTagInfoStatus.innerHTML = (responseURL !== canonicalLinkTag) ? "redirects &rarr; " + httpCanonicalStatus : httpCanonicalStatus;
+                                        }
+                                    }
+                                    if (responseURL !== canonicalLinkTag) {
+                                        var spanCanonicalLinkTagInfoResponseUrl = document.getElementById("canonical-link-tag-info-response-url");
+                                        var spanCanonicalLinkTagInfoResponseUrlValue = document.getElementById("canonical-link-tag-info-response-url-value");
+                                        if (spanCanonicalLinkTagInfoResponseUrl && spanCanonicalLinkTagInfoResponseUrlValue) {
+                                            spanCanonicalLinkTagInfoResponseUrl.innerHTML = "<br><hr>Response URL";
+                                            spanCanonicalLinkTagInfoResponseUrlValue.innerHTML = '<a href="' + responseURL + '" target="_blank">' + responseURL + '</a>';
+                                        }
+                                    }
                                 }
-                                if (responseURL !== canonicalLinkTag) {
-                                    var spanCanonicalLinkTagInfoResponseUrl = document.getElementById("canonical-link-tag-info-response-url");
-                                    spanCanonicalLinkTagInfoResponseUrl.innerHTML = "<br><hr>Response URL";
-                                    var spanCanonicalLinkTagInfoResponseUrlValue = document.getElementById("canonical-link-tag-info-response-url-value");
-                                    spanCanonicalLinkTagInfoResponseUrlValue.innerHTML = '<a href="' + responseURL + '" target="_blank">' + responseURL + '</a>';;
-                                }
-                            }
-                        };
-                        xhr2.open('GET', canonicalLinkTag, true);
-                        xhr2.send(null);
+                            };
+                            xhr2.open('GET', canonicalLinkTag, true);
+                            xhr2.send(null);
+                        }
                     }
                 }
             };
@@ -454,8 +516,7 @@ chrome.runtime.onMessage.addListener(
             // Create spinner
             var spinner = new Spinner(opts).spin(spinnerElem);
 
-            // If you want to asynchronously use sendResponse, add return true; to the onMessage event handler.
-            return true;
         });
 
+        return true;
     });
