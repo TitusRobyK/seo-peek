@@ -1,6 +1,6 @@
 # SEO Peek v3
 
-This is the actively maintained fork of SEO Peek, stewarded by **Titus Roby K**.
+This is the actively maintained fork of SEO Peek, maintained by **Titus Roby K**.
 The original Manifest V2 extension by Sander Heilbron has been closed, so this
 repository keeps the project alive, modernizes it for Manifest V3, and adds a
 few refinements along the way.
