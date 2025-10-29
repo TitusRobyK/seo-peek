@@ -1,4 +1,4 @@
-# SEO Peek (Manifest V3 Edition)
+# SEO Peek v3
 
 This is the actively maintained fork of SEO Peek, stewarded by **Titus Roby K**.
 The original Manifest V2 extension by Sander Heilbron has been closed, so this
